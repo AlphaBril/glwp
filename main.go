@@ -41,45 +41,49 @@ func lerp(a int, b int32, t float64) int {
 	return int(float64(a) + float64(t)*(float64(b)-float64(a)))
 }
 
-func loadWallpaper(renderer *sdl.Renderer, wallpaper wallpaper, err error) (wallpaper, error) {
-	for i := 0; i < 4; i++ {
-		var surface *sdl.Surface
-		var tex *sdl.Texture
-		if surface, err = sdl.LoadBMP(bmpImages[i]); err != nil {
-			return wallpaper, err
-		}
-		if tex, err = renderer.CreateTextureFromSurface(surface); err != nil {
-			return wallpaper, err
-		}
-		if i == 0 {
-			wallpaper.originalW = surface.W
-			wallpaper.originalH = surface.H
-		}
-		surface.Free()
-		wallpaper.layers[i].tex = tex
-	}
-	if wallpaper.tex, err = renderer.CreateTexture(sdl.PIXELFORMAT_ABGR8888, sdl.TEXTUREACCESS_TARGET, width, height); err != nil {
-		return wallpaper, err
-	}
-	return wallpaper, err
-}
-
 func run() (err error) {
 	var window *sdl.Window
 	var renderer *sdl.Renderer
 	var wallpaper wallpaper
 	var monitor *sdl.Texture
+	var info *sdl.SysWMInfo
+	var subsystem string
 
 	if err = sdl.Init(sdl.INIT_VIDEO); err != nil {
 		return
 	}
 	defer sdl.Quit()
 
-	// Create a window for us to draw the images on
-	if window, err = sdl.CreateWindow("Parallax", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, width, height, sdl.WINDOW_SHOWN); err != nil {
+	if window, err = sdl.CreateWindow("Parallax", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, width, height, sdl.WINDOW_OPENGL|sdl.WINDOW_HIDDEN); err != nil {
 		return
 	}
 	defer window.Destroy()
+	if info, err = window.GetWMInfo(); err != nil {
+		return
+	}
+	fmt.Printf("info: %v\n", info.Subsystem)
+	switch info.Subsystem {
+	case sdl.SYSWM_UNKNOWN:
+		subsystem = "An unknown system!"
+	case sdl.SYSWM_WINDOWS:
+		subsystem = "Microsoft Windows(TM)"
+	case sdl.SYSWM_X11:
+		subsystem = "X Window System"
+	case sdl.SYSWM_DIRECTFB:
+		subsystem = "DirectFB"
+	case sdl.SYSWM_COCOA:
+		subsystem = "Apple OS X"
+	case sdl.SYSWM_UIKIT:
+		subsystem = "UIKit"
+	case sdl.SYSWM_WAYLAND:
+		subsystem = "Wayland"
+	}
+
+	fmt.Printf("This program is running SDL version %d.%d.%d on %s\n",
+		info.Version.Major,
+		info.Version.Minor,
+		info.Version.Patch,
+		subsystem)
 
 	if renderer, err = sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED); err != nil {
 		return
@@ -99,7 +103,6 @@ func run() (err error) {
 		state uint32 = 0
 	)
 
-	// Run infinite loop until user closes the window
 	running := true
 	for running {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
